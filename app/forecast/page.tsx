@@ -162,8 +162,8 @@ export default function ForecastPage() {
   function speak() {
     if (!("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(`${city}, ${label(selected.date)}. ${selected.condition}. High ${selected.high} degrees, low ${selected.low} degrees, with ${selected.rain} percent rain chance. Best time outside is ${best.label}.`);
-    utterance.lang = "en-IN"; window.speechSynthesis.speak(utterance);
+    const utterance = new SpeechSynthesisUtterance(`Mausam bulletin. Yatri gan kripya dhyaan dein. ${city}, ${label(selected.date)}. Aaj ka haal: ${selected.condition}. Maximum temperature ${selected.high} degrees, minimum ${selected.low} degrees. Baarish ki sambhaavna ${selected.rain} percent. Bahar jaane ka behtareen samay ${best.label}. Umbrella le jaana samajhdari hogi.`);
+    utterance.lang = "hi-IN"; utterance.rate = 0.92; utterance.pitch = 0.96; window.speechSynthesis.speak(utterance);
   }
 
   async function share() {
