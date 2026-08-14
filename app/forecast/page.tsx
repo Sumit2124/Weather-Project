@@ -85,6 +85,7 @@ export default function ForecastPage() {
   const [navigating, setNavigating] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [shareNotice, setShareNotice] = useState("");
+  const [dialMode, setDialMode] = useState(0);
   const prefetchedDays = useRef(new Set<string>());
   const mood = useMemo(() => vibe(selected), [selected]);
   const best = useMemo(() => bestHour(hours), [hours]);
@@ -100,10 +101,20 @@ export default function ForecastPage() {
   }, []);
 
   useEffect(() => {
+    const timer = window.setInterval(() => setDialMode((value) => (value + 1) % 4), 4200);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const cachedWeek = window.sessionStorage.getItem("mausam-week-cache");
+    if (cachedWeek) {
+      try { const parsed = JSON.parse(cachedWeek) as Day[]; if (Array.isArray(parsed) && parsed.length) setWeek(parsed); } catch { window.sessionStorage.removeItem("mausam-week-cache"); }
+    }
     const requestedCity = params.get("city") || "New Delhi";
     const requestedCountry = params.get("country") || "India";
     const requestedDate = params.get("date") || new Date().toISOString().slice(0, 10);
+    if (cachedWeek) { try { const parsed = JSON.parse(cachedWeek) as Day[]; const cachedSelected = parsed.find((day) => day.date === requestedDate); if (cachedSelected) setSelected(cachedSelected); } catch { /* ignore stale cache */ } }
     setCity(requestedCity); setCountry(requestedCountry);
 
     async function load() {
@@ -146,6 +157,7 @@ export default function ForecastPage() {
   function openDay(day: Day) {
     if (day.date === selected.date || navigating) return;
     setNavigating(true);
+    try { window.sessionStorage.setItem("mausam-week-cache", JSON.stringify(week)); } catch { /* storage may be unavailable */ }
     const params = new URLSearchParams({ city, country, date: day.date, lat: coords.lat, lon: coords.lon });
     window.location.assign(`/forecast?${params.toString()}`);
   }
@@ -211,6 +223,7 @@ export default function ForecastPage() {
     <section className="radar-compare-grid detail-l2-section"><article className="radar-card"><div className="feature-heading"><div><p className="card-kicker">LIVE RAIN + AQI MAP</p><h3>See what’s around the region.</h3></div><a href="https://www.windy.com/" target="_blank" rel="noreferrer">Powered by Windy ↗</a></div>{radarUrl ? mapReady ? <><div className="radar-viewport interactive-radar"><iframe src={radarUrl} title={`Interactive rain radar for ${city}`} loading="lazy" /><div className={`map-aqi-badge ${health.aqi == null ? "loading" : health.aqi <= 50 ? "good" : health.aqi <= 100 ? "moderate" : "unhealthy"}`}><span>AQI NEAR {city.toUpperCase()}</span><b>{health.aqi ?? "···"}</b><small>{aqiName(health.aqi)}</small></div></div><p className="radar-caption"><span>●</span> Drag and zoom enabled · Timeline hidden</p></> : <div className="map-load-card"><span className="map-preview-icon">☁︎</span><b>Interactive map ready when you need it</b><small>Load it on demand to keep the forecast buttery smooth.</small><button type="button" onClick={() => setMapReady(true)}>Load interactive map</button></div> : <div className="empty-intel">Loading radar…</div>}</article><article className="compare-card"><p className="card-kicker">DESTINATION DUEL</p><h3>Where should we actually go?</h3><p>Compare up to three cities for {label(selected.date)}.</p><form onSubmit={(event) => void compare(event)}><input value={compareQuery} onChange={(event) => setCompareQuery(event.target.value)} /><button type="submit">Compare</button></form><div className="comparison-results">{compareResults.map((place,index) => <div key={place.city}><span className="rank">#{index+1}</span><span className="compare-icon">{place.emoji}</span><p><b>{place.city}</b><small>{place.high}° · ☂ {place.rain}%</small></p><strong>{place.score}<small>/100</small></strong></div>)}</div></article></section>
 
     {mapReady && <button type="button" className="map-exit-button" onClick={() => setMapReady(false)}>× Close interactive map</button>}
+    <section className="vintage-desk detail-l2-section" aria-label="Vintage weather desk"><article className="almanac-card"><p className="card-kicker">VINTAGE WEATHER ALMANAC</p><h3>On this date last year…</h3>{history ? <p>{history.high}° / {history.low}° with {history.rain} mm rain. The sky has a surprisingly good memory.</p> : <p>Checking the old weather diary…</p>}</article><article className="dial-card"><p className="card-kicker">ANALOG FORECAST DIAL</p><div className={`forecast-dial dial-${dialMode}`}><span>{["☀️ Sunny","🌧️ Rainy","💨 Windy","⛈️ Stormy"][dialMode]}</span><i /></div><small>Auto-rotating sky mood</small></article><article className="radio-card"><p className="card-kicker">ALL INDIA MAUSAM RADIO</p><h3>Yatri gan kripya dhyaan dein…</h3><p>{selected.rain >= 60 ? "Baarish aa rahi hai—chhatri saath rakhiye." : "Aasmaan relatively shaant hai—safar sukhad ho."}</p><button type="button" onClick={speak}>▶ Play bulletin</button></article><article className="newspaper-card"><p className="card-kicker">TODAY’S MAUSAM REPORT</p><h3>{city} · {label(selected.date)}</h3><p>{selected.condition} · High {selected.high}° · Rain chance {selected.rain}%</p></article><article className="mercury-card"><p className="card-kicker">OLD THERMOMETER</p><div className="mercury-tube"><i style={{ height: `${Math.min(92, Math.max(12, (selected.temperature + 5) * 2.1))}%` }} /></div><b>{selected.temperature}°C</b><small>Feels like {selected.feelsLike}°</small></article><article className="sun-clock-card"><p className="card-kicker">DAYLIGHT CLOCK</p><div className="sun-clock"><i style={{ transform: `rotate(${Math.min(330, Math.max(30, selected.sunshineHours / Math.max(selected.daylightHours, 1) * 300))}deg)` }} /><span>☀</span></div><p>↑ {selected.sunrise} Sunrise<br />↓ {selected.sunset} Sunset</p></article></section>
     <aside className="ad-slot detail-l2-section" aria-label="Advertisement" data-ad-slot="forecast-inline" data-ad-filled="false">
       <span>ADVERTISEMENT</span><div className="ad-content" />
     </aside>
