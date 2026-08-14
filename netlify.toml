@@ -1,0 +1,5 @@
+[build]
+  command = "NITRO_PRESET=netlify pnpm run build:netlify"
+
+[build.environment]
+  NODE_VERSION = "22.13.0"

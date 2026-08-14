@@ -42,6 +42,8 @@ export default defineConfig(async () => {
 
   // Wrangler snapshots its log path while the Cloudflare plugin is imported.
   const { cloudflare } = await import("@cloudflare/vite-plugin");
+  const useNitro = process.env.NITRO_PRESET === "netlify";
+  const { nitro } = useNitro ? await import("nitro/vite") : { nitro: null };
 
   return {
     server: isCodexSeatbeltSandbox
@@ -50,10 +52,10 @@ export default defineConfig(async () => {
     plugins: [
       vinext(),
       sites(),
-      cloudflare({
+      ...(useNitro ? [nitro!()] : [cloudflare({
         viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
         config: localBindingConfig,
-      }),
+      })]),
     ],
   };
 });

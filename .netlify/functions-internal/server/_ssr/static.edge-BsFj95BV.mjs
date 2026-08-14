@@ -1,0 +1,1 @@
+import{p as e,t}from"./ssr.mjs";var n=e((e=>{var n=t();e.version=n.version,e.prerender=n.prerender,e.resumeAndPrerender=n.resumeAndPrerender}))();export{n as default};
