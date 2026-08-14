@@ -10,6 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
       return {
         metadataBase: new URL(`${protocol}://${host}`),
+        verification: { google: "qjCIiViIxVGbB8GV6f3VrQEfzcEbsuLypyEmRlaexQU" },
         title: "Mausam ka Mood — Weather, but useful",
     description: "A travel-first, mood-aware weather planner with actual forecast data and a little Hindi sarcasm.",
     icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
