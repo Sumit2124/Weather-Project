@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mausam ka Mood"
+  short_description: "Maintain and extend the Mausam ka Mood weather planner"
+  default_prompt: "Use $mausam-ka-mood to maintain this weather planner, its UX, data sources, and deployment metadata."
