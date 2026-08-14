@@ -201,6 +201,16 @@ function makeFallbackWeek(baseDate = isoToday()): DailyForecast[] {
 }
 
 const cityShortcuts = ["New Delhi", "Mumbai", "Bengaluru", "Manali"];
+const footerSlangs = [
+  "Mausam ka mood: umbrella le jao, overconfidence ghar chhod do. ☔",
+  "Aaj clouds ka attitude zyada hai, plans thode flexible rakho. 😏",
+  "Forecast bol raha hai ‘niklo’; traffic bol raha hai ‘soch lo’. 🚗",
+  "Dhoop free hai, sunscreen complimentary nahi. ☀️",
+  "Barish ka invitation aa gaya—chai compulsory hai. ☕",
+  "Hawa itni tez hai ki hairstyle ne work-from-home choose kar liya. 💨",
+  "Weather accurate hai; tumhara ‘bas paanch minute’ abhi bhi doubtful hai. 😄",
+  "Aasmaan dramatic hai, par tum umbrella ke saath protagonist ho. 🌦️",
+];
 
 function isoToday() {
   return new Date().toISOString().slice(0, 10);
@@ -447,6 +457,7 @@ export default function Home() {
   const [result, setResult] = useState<WeatherResult>(fallbackResult);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("Fresh forecast, zero boring charts.");
+  const [footerSlang, setFooterSlang] = useState(footerSlangs[0]);
   const [citySuggestions, setCitySuggestions] = useState<CityOption[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<CityOption | null>(null);
   const [searchingCities, setSearchingCities] = useState(false);
@@ -469,6 +480,10 @@ export default function Home() {
   const [voiceStatus, setVoiceStatus] = useState("Voice briefing ready");
   const forecastRef = useRef<HTMLElement>(null);
   const initialForecastLoaded = useRef(false);
+  useEffect(() => {
+    const timer = window.setInterval(() => setFooterSlang((current) => footerSlangs[(footerSlangs.indexOf(current) + 1) % footerSlangs.length]), 7000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const vibe = useMemo(() => getVibe(result), [result]);
   const bestTime = useMemo(() => getBestTime(hourlyForecast), [hourlyForecast]);
@@ -1129,7 +1144,7 @@ export default function Home() {
         <span>ADVERTISEMENT</span><div className="ad-content" />
       </aside>
 
-      <footer><span>MAUSAM KA MOOD™</span><span>{message}</span><span>Built for people who have plans.</span></footer>
+      <footer><span>MAUSAM KA MOOD™</span><span className="footer-slang" aria-live="polite">{footerSlang}</span><span>Built for people who have plans.</span></footer>
     </main>
   );
 }

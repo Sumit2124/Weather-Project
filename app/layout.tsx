@@ -8,8 +8,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const protocol = requestHeaders.get("x-forwarded-proto") ?? "https";
   const image = `${protocol}://${host}/og.png`;
 
-  return {
-    title: "Mausam ka Mood — Weather, but useful",
+      return {
+        metadataBase: new URL(`${protocol}://${host}`),
+        title: "Mausam ka Mood — Weather, but useful",
     description: "A travel-first, mood-aware weather planner with actual forecast data and a little Hindi sarcasm.",
     icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
     openGraph: {

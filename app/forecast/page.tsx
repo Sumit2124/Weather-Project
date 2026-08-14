@@ -94,6 +94,12 @@ export default function ForecastPage() {
   const radarUrl = useMemo(() => coords.lat ? `https://embed.windy.com/embed2.html?lat=${coords.lat}&lon=${coords.lon}&zoom=7&level=surface&overlay=radar&product=radar&marker=true&calendar=now&type=map&location=coordinates&detailLat=${coords.lat}&detailLon=${coords.lon}&radarRange=-1&play=0` : "", [coords]);
 
   useEffect(() => {
+    const closeMapOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setMapReady(false); };
+    window.addEventListener("keydown", closeMapOnEscape);
+    return () => window.removeEventListener("keydown", closeMapOnEscape);
+  }, []);
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const requestedCity = params.get("city") || "New Delhi";
     const requestedCountry = params.get("country") || "India";
@@ -112,9 +118,10 @@ export default function ForecastPage() {
         const url = new URL("https://api.open-meteo.com/v1/forecast");
         url.search = new URLSearchParams({ latitude: lat, longitude: lon, timezone: "auto", forecast_days: "16", models: "best_match", hourly: "temperature_2m,relative_humidity_2m,precipitation_probability,weather_code,wind_speed_10m,visibility", daily: "weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max,uv_index_max,sunshine_duration,daylight_duration,sunrise,sunset" }).toString();
         const forecast = await fetch(url).then((response) => response.json());
-        const requestedIndex = Math.max(0, forecast.daily.time.indexOf(requestedDate));
-        const windowStart = Math.max(1, Math.min(Math.max(1, requestedIndex - 2), Math.max(1, forecast.daily.time.length - 6)));
-        const dayIndices = [0, ...Array.from({ length: 6 }, (_, offset) => windowStart + offset).filter((index) => index < forecast.daily.time.length)];
+        // Keep the navigator chronological: today first, followed by the next
+        // six calendar days. The selected day is highlighted, never used to
+        // reorder the week around itself.
+        const dayIndices = Array.from({ length: 7 }, (_, index) => index).filter((index) => index < forecast.daily.time.length);
         const days: Day[] = dayIndices.map((index) => {
           const date = forecast.daily.time[index]; const sky = skies[forecast.daily.weather_code[index]] ?? skies[3];
           const humidities = forecast.hourly.time.reduce((values: number[], stamp: string, hourIndex: number) => stamp.startsWith(date) ? [...values, forecast.hourly.relative_humidity_2m[hourIndex]] : values, []);
@@ -182,12 +189,12 @@ export default function ForecastPage() {
 
   return <main className={`weather-app forecast-detail-page ${navigating ? "is-navigating" : ""}`}>
     {navigating && <div className="day-change-overlay" role="status" aria-live="polite"><span className="weather-loader">{selected.emoji}</span><b>Changing the sky…</b><small>Loading your selected day</small></div>}
-    <nav className="topbar"><a className="brand" href="/"><span className="brand-mark">☼</span><span>Mausam <i>ka Mood</i></span></a><a className="detail-back" href="/">← Back to planner</a></nav>
+    <nav className="topbar"><a className="brand" href="/"><span className="brand-mark">☼</span><span>Mausam <i>ka Mood</i></span></a><a className="detail-back" href={`/?city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}&date=${selected.date}&lat=${coords.lat}&lon=${coords.lon}`}>← View city data</a></nav>
     <section className="detail-page-head">
       <div><p className="eyebrow">YOUR DAY, FULLY DECODED</p><h1>{city}<span>, {country}</span></h1><p>{loading ? "Fetching the latest forecast…" : `${label(selected.date)} · ${selected.condition}`}</p></div>
       <div className="model-badge"><span>◉</span><div><b>Best-match model</b><small>Dedicated forecast view</small></div></div>
     </section>
-    {week.length > 0 && <nav className="week-dock detail-week-dock" aria-label="Choose another forecast day"><div className="week-dock-label"><span>7 DAY</span><small>Today + selected</small></div><div className="week-dock-days">{week.map((day, index) => <button key={day.date} className={day.date === selected.date ? "is-selected" : ""} onMouseEnter={() => prefetchDay(day)} onFocus={() => prefetchDay(day)} onClick={() => openDay(day)}><span>{index === 0 ? "Today" : shortDay(day.date)}</span><b>{day.emoji}</b><small>{day.high}°</small></button>)}</div><a href="/">New search ↗</a></nav>}
+    {(week.length > 0 || loading) && <nav className="week-dock detail-week-dock" aria-label="Choose another forecast day"><div className="week-dock-label"><span>7 DAY</span><small>Today + selected</small></div><div className="week-dock-days">{week.length > 0 ? week.map((day, index) => <button key={day.date} className={day.date === selected.date ? "is-selected" : ""} onMouseEnter={() => prefetchDay(day)} onFocus={() => prefetchDay(day)} onClick={() => openDay(day)}><span>{index === 0 ? "Today" : shortDay(day.date)}</span><b>{day.emoji}</b><small>{day.high}°</small></button>) : Array.from({ length: 7 }, (_, index) => <button key={`loading-day-${index}`} className="is-loading-day" disabled aria-label="Loading forecast day"><span>—</span><b>🌤️</b><small>—</small></button>)}</div><a href="/">New search ↗</a></nav>}
     <section className={`forecast-grid detail-forecast-grid ${loading ? "is-loading" : ""}`}>
       <article className="temperature-card"><div className={`weather-orb weather-animation animation-${animationKind(selected.condition)}`}><span>{selected.emoji}</span><i className="weather-particle particle-one" /><i className="weather-particle particle-two" /><i className="weather-particle particle-three" /></div><p className="card-kicker">EXPECTED</p><div className="temperature-value">{selected.temperature}<sup>°C</sup></div><div className="temperature-meta"><span>Feels like <b>{selected.feelsLike}°</b></span><span>↑ {selected.high}° &nbsp; ↓ {selected.low}°</span></div><div className="temperature-rule" /><p>{selected.condition}. Everything needed for this day, right where you selected it.</p></article>
       <article className="vibe-card"><div className="card-topline"><p className="card-kicker">THE VIBE METER</p><span>✦ SKY SENSE</span></div><div className="vibe-main"><div className="vibe-ring" style={{ "--score": `${mood.score}%` } as CSSProperties}><b>{mood.score}</b><small>/ 100</small></div><div><h3>{mood.title}</h3><p>{mood.note}</p></div></div><div className="vibe-bars"><span><i style={{ width: `${Math.max(12,100-selected.rain)}%` }} />Mood</span><span><i style={{ width: `${Math.max(12,100-selected.uv*7)}%` }} />Comfort</span><span><i style={{ width: `${Math.max(12,100-selected.wind*2)}%` }} />Hair-safe</span></div></article>
@@ -203,6 +210,7 @@ export default function ForecastPage() {
 
     <section className="radar-compare-grid detail-l2-section"><article className="radar-card"><div className="feature-heading"><div><p className="card-kicker">LIVE RAIN + AQI MAP</p><h3>See what’s around the region.</h3></div><a href="https://www.windy.com/" target="_blank" rel="noreferrer">Powered by Windy ↗</a></div>{radarUrl ? mapReady ? <><div className="radar-viewport interactive-radar"><iframe src={radarUrl} title={`Interactive rain radar for ${city}`} loading="lazy" /><div className={`map-aqi-badge ${health.aqi == null ? "loading" : health.aqi <= 50 ? "good" : health.aqi <= 100 ? "moderate" : "unhealthy"}`}><span>AQI NEAR {city.toUpperCase()}</span><b>{health.aqi ?? "···"}</b><small>{aqiName(health.aqi)}</small></div></div><p className="radar-caption"><span>●</span> Drag and zoom enabled · Timeline hidden</p></> : <div className="map-load-card"><span className="map-preview-icon">☁︎</span><b>Interactive map ready when you need it</b><small>Load it on demand to keep the forecast buttery smooth.</small><button type="button" onClick={() => setMapReady(true)}>Load interactive map</button></div> : <div className="empty-intel">Loading radar…</div>}</article><article className="compare-card"><p className="card-kicker">DESTINATION DUEL</p><h3>Where should we actually go?</h3><p>Compare up to three cities for {label(selected.date)}.</p><form onSubmit={(event) => void compare(event)}><input value={compareQuery} onChange={(event) => setCompareQuery(event.target.value)} /><button type="submit">Compare</button></form><div className="comparison-results">{compareResults.map((place,index) => <div key={place.city}><span className="rank">#{index+1}</span><span className="compare-icon">{place.emoji}</span><p><b>{place.city}</b><small>{place.high}° · ☂ {place.rain}%</small></p><strong>{place.score}<small>/100</small></strong></div>)}</div></article></section>
 
+    {mapReady && <button type="button" className="map-exit-button" onClick={() => setMapReady(false)}>× Close interactive map</button>}
     <aside className="ad-slot detail-l2-section" aria-label="Advertisement" data-ad-slot="forecast-inline" data-ad-filled="false">
       <span>ADVERTISEMENT</span><div className="ad-content" />
     </aside>
